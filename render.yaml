@@ -1,5 +1,5 @@
 # Blueprint de Render para la aplicación PRzone
-# Versión final que especifica explícitamente el dockerContext para cada servicio.
+# Versión final con dockerContext explícito y la sintaxis correcta para las URLs.
 
 services:
   # 1. Servicio del Proxy Inverso (Nginx)
@@ -7,29 +7,26 @@ services:
     name: proxy
     env: docker
     repo: https://github.com/GuilleAlvareez/PRzone-Completo
-    dockerContext: ./nginx # <-- AÑADIDO: El contexto es la carpeta nginx
-    dockerfilePath: ./nginx/Dockerfile # La ruta es relativa a la raíz del repo
+    dockerContext: ./nginx
+    dockerfilePath: ./nginx/Dockerfile
+    envVars:
+      - key: PORT
+        value: 80
 
   # 2. Servicio del Backend (Node.js)
   - type: web
     name: backend
     env: docker
     repo: https://github.com/GuilleAlvareez/PRzone-Completo
-    dockerContext: ./backend # <-- AÑADIDO: El contexto es la carpeta backend
-    dockerfilePath: ./backend/Dockerfile # La ruta es relativa a la raíz del repo
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
     envVars:
       - key: NODE_ENV
         value: production
       - key: BETTER_AUTH_URL
-        fromService:
-          type: web
-          name: proxy
-          property: url
+        value: https://${proxy.RENDER_EXTERNAL_URL} # <-- FORMA CORRECTA
       - key: CLIENT_URL
-        fromService:
-          type: web
-          name: proxy
-          property: url
+        value: https://${proxy.RENDER_EXTERNAL_URL} # <-- FORMA CORRECTA
       - key: DB_HOST
         value: "aws.connect.psdb.cloud"
       - key: DB_PORT
@@ -55,5 +52,5 @@ services:
     name: frontend
     env: docker
     repo: https://github.com/GuilleAlvareez/PRzone-Completo
-    dockerContext: ./frontend # <-- AÑADIDO: El contexto es la carpeta frontend
-    dockerfilePath: ./frontend/Dockerfile # La ruta es relativa a la raíz del repo
+    dockerContext: ./frontend
+    dockerfilePath: ./frontend/Dockerfile
