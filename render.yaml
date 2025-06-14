@@ -1,33 +1,35 @@
 # Blueprint de Render para la aplicación PRzone
-# Versión final que usa un Dockerfile explícito para cada servicio.
+# Versión final que especifica explícitamente el dockerContext para cada servicio.
 
 services:
   # 1. Servicio del Proxy Inverso (Nginx)
-  # Lo definimos primero para que su URL esté disponible para el backend.
   - type: web
     name: proxy
     env: docker
     repo: https://github.com/GuilleAlvareez/PRzone-Completo
-    dockerfilePath: ./nginx/Dockerfile
-    envVars:
-      - key: PORT
-        value: 80
+    dockerContext: ./nginx # <-- AÑADIDO: El contexto es la carpeta nginx
+    dockerfilePath: ./nginx/Dockerfile # La ruta es relativa a la raíz del repo
 
   # 2. Servicio del Backend (Node.js)
   - type: web
     name: backend
     env: docker
     repo: https://github.com/GuilleAlvareez/PRzone-Completo
-    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend # <-- AÑADIDO: El contexto es la carpeta backend
+    dockerfilePath: ./backend/Dockerfile # La ruta es relativa a la raíz del repo
     envVars:
       - key: NODE_ENV
         value: production
       - key: BETTER_AUTH_URL
-        # Usamos la variable que Render proporciona para la URL pública del servicio proxy
-        value: https://${proxy.RENDER_EXTERNAL_URL} # <-- ESTA ES LA FORMA CORRECTA
+        fromService:
+          type: web
+          name: proxy
+          property: url
       - key: CLIENT_URL
-        # Hacemos lo mismo para la URL del cliente
-        value: https://${proxy.RENDER_EXTERNAL_URL} # <-- ESTA ES LA FORMA CORRECTA
+        fromService:
+          type: web
+          name: proxy
+          property: url
       - key: DB_HOST
         value: "aws.connect.psdb.cloud"
       - key: DB_PORT
@@ -53,4 +55,5 @@ services:
     name: frontend
     env: docker
     repo: https://github.com/GuilleAlvareez/PRzone-Completo
-    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend # <-- AÑADIDO: El contexto es la carpeta frontend
+    dockerfilePath: ./frontend/Dockerfile # La ruta es relativa a la raíz del repo
