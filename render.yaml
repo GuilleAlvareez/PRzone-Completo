@@ -1,5 +1,5 @@
 # Blueprint de Render para la aplicación PRzone
-# Versión con la corrección final para el servicio de proxy.
+# Versión final que usa un Dockerfile explícito para cada servicio.
 
 services:
   # 1. Servicio del Backend (Node.js)
@@ -51,16 +51,9 @@ services:
   # 3. Servicio del Proxy Inverso (Nginx) - ¡CORREGIDO!
   - type: web
     name: proxy
-    env: image # <-- CAMBIO 1: Usamos 'image' en lugar de 'docker'
-    repo: https://github.com/GuilleAlvareez/PRzone-Completo # Lo mantenemos para que se actualice con los commits
-    image:
-      url: nginx:alpine # <-- CAMBIO 2: Especificamos la imagen pública
-    # El resto de la configuración del proxy se hace con las reglas de Render
-    # que son más sencillas y no requieren montar volúmenes.
-    routes:
-      - type: proxy
-        source: /api/(.*)
-        destination: http://backend:3000/$1
-      - type: proxy
-        source: /(.*)
-        destination: http://frontend/$1
+    env: docker # Usamos docker porque ahora tiene su propio Dockerfile
+    repo: https://github.com/GuilleAlvareez/PRzone-Completo
+    dockerfilePath: ./nginx/Dockerfile # <-- CAMBIO CLAVE: Apuntamos al nuevo Dockerfile
+    envVars:
+      - key: PORT
+        value: 80
