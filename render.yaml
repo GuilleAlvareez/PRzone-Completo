@@ -1,8 +1,21 @@
 # Blueprint de Render para la aplicación PRzone
-# Versión final que usa un contenedor Docker personalizado para Nginx.
+# Versión final que usa la variable de entorno RENDER_EXTERNAL_URL
 
 services:
-  # 1. Servicio del Backend (Node.js)
+  # 1. Servicio del Proxy Inverso (Nginx) - ¡AHORA ES EL PRIMERO!
+  # Lo definimos primero para que su URL esté disponible para el backend.
+  # Este es el ÚNICO servicio público.
+  - type: web
+    name: proxy
+    env: docker
+    repo: https://github.com/GuilleAlvareez/PRzone-Completo
+    dockerCommand: nginx -c /etc/nginx/nginx.conf -g 'daemon off;'
+    dockerContext: ./nginx
+    envVars:
+      - key: PORT
+        value: 80
+
+  # 2. Servicio del Backend (Node.js)
   - type: web
     name: backend
     env: docker
@@ -12,15 +25,11 @@ services:
       - key: NODE_ENV
         value: production
       - key: BETTER_AUTH_URL
-        fromService:
-          type: web
-          name: proxy
-          property: url
+        # Usamos la variable que Render proporciona para la URL pública del servicio proxy
+        value: https://${proxy.RENDER_EXTERNAL_URL}
       - key: CLIENT_URL
-        fromService:
-          type: web
-          name: proxy
-          property: url
+        # Hacemos lo mismo para la URL del cliente
+        value: https://${proxy.RENDER_EXTERNAL_URL}
       - key: DB_HOST
         value: "aws.connect.psdb.cloud"
       - key: DB_PORT
@@ -41,24 +50,9 @@ services:
       - key: DATABASE_URL
         sync: false
 
-  # 2. Servicio del Frontend (React servido por Nginx)
+  # 3. Servicio del Frontend (React servido por Nginx)
   - type: web
     name: frontend
     env: docker
     repo: https://github.com/GuilleAlvareez/PRzone-Completo
     dockerfilePath: ./frontend/Dockerfile
-
-  # 3. Servicio del Proxy Inverso (Nginx)
-  # Este es el ÚNICO servicio público.
-  - type: web
-    name: proxy
-    env: docker # <-- CAMBIO CLAVE: Usamos Docker en lugar de 'nginx'
-    repo: https://github.com/GuilleAlvareez/PRzone-Completo
-    # No necesitamos un Dockerfile para Nginx, podemos usar la imagen oficial
-    # y montar nuestra configuración. Render lo maneja con estas propiedades:
-    dockerCommand: nginx -c /etc/nginx/nginx.conf -g 'daemon off;'
-    dockerContext: ./nginx # Le decimos dónde está el contexto (el archivo de config)
-    # Render necesita saber qué puerto exponer, aunque ya lo definimos en nginx.conf
-    envVars:
-      - key: PORT
-        value: 80
