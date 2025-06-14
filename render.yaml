@@ -2,7 +2,18 @@
 # Versión final que usa un Dockerfile explícito para cada servicio.
 
 services:
-  # 1. Servicio del Backend (Node.js)
+  # 1. Servicio del Proxy Inverso (Nginx)
+  # Lo definimos primero para que su URL esté disponible para el backend.
+  - type: web
+    name: proxy
+    env: docker
+    repo: https://github.com/GuilleAlvareez/PRzone-Completo
+    dockerfilePath: ./nginx/Dockerfile
+    envVars:
+      - key: PORT
+        value: 80
+
+  # 2. Servicio del Backend (Node.js)
   - type: web
     name: backend
     env: docker
@@ -12,15 +23,11 @@ services:
       - key: NODE_ENV
         value: production
       - key: BETTER_AUTH_URL
-        fromService:
-          type: web
-          name: proxy
-          property: url
+        # Usamos la variable que Render proporciona para la URL pública del servicio proxy
+        value: https://${proxy.RENDER_EXTERNAL_URL} # <-- ESTA ES LA FORMA CORRECTA
       - key: CLIENT_URL
-        fromService:
-          type: web
-          name: proxy
-          property: url
+        # Hacemos lo mismo para la URL del cliente
+        value: https://${proxy.RENDER_EXTERNAL_URL} # <-- ESTA ES LA FORMA CORRECTA
       - key: DB_HOST
         value: "aws.connect.psdb.cloud"
       - key: DB_PORT
@@ -41,19 +48,9 @@ services:
       - key: DATABASE_URL
         sync: false
 
-  # 2. Servicio del Frontend (React servido por Nginx)
+  # 3. Servicio del Frontend (React servido por Nginx)
   - type: web
     name: frontend
     env: docker
     repo: https://github.com/GuilleAlvareez/PRzone-Completo
     dockerfilePath: ./frontend/Dockerfile
-
-  # 3. Servicio del Proxy Inverso (Nginx) - ¡CORREGIDO!
-  - type: web
-    name: proxy
-    env: docker # Usamos docker porque ahora tiene su propio Dockerfile
-    repo: https://github.com/GuilleAlvareez/PRzone-Completo
-    dockerfilePath: ./nginx/Dockerfile # <-- CAMBIO CLAVE: Apuntamos al nuevo Dockerfile
-    envVars:
-      - key: PORT
-        value: 80
