@@ -1,0 +1,70 @@
+# Blueprint de Render para la aplicación PRzone
+# Este archivo define los servicios que componen la aplicación.
+
+services:
+  # 1. Servicio del Backend (Node.js)
+  - type: web
+    name: backend
+    env: docker
+    repo: https://github.com/GuilleAlvareez/PRzone-Completo
+    dockerfilePath: ./backend/Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BETTER_AUTH_URL
+        fromService:
+          type: web
+          name: proxy
+          property: url
+      - key: CLIENT_URL
+        fromService:
+          type: web
+          name: proxy
+          property: url
+      - key: DB_HOST
+        value: "aws.connect.psdb.cloud"
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_USER
+        value: "p0eykwvk68h8pi7u5bia"
+      - key: DB_NAME
+        value: "przone"
+      - key: model
+        value: "mistralai/devstral-small:free"
+      # --- CLAVES SECRETAS ---
+      # Los valores para estas claves se configuran en el Dashboard de Render,
+      # NUNCA en este archivo.
+      - key: BETTER_AUTH_SECRET
+        sync: false
+      - key: API_KEY
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+
+  # 2. Servicio del Frontend (React servido por Nginx)
+  - type: web
+    name: frontend
+    env: docker
+    repo: https://github.com/GuilleAlvareez/PRzone-Completo
+    dockerfilePath: ./frontend/Dockerfile
+
+  # 3. Servicio del Proxy Inverso (Nginx)
+  - type: web
+    name: proxy
+    env: nginx
+    repo: https://github.com/GuilleAlvareez/PRzone-Completo
+    rules:
+      - type: rewrite
+        source: /api/(.*)
+        destination: /$1
+      - type: proxy
+        source: /api/(.*)
+        destination: http://backend:3000
+      - type: rewrite
+        source: /.*
+        destination: /index.html
+      - type: proxy
+        source: /*
+        destination: http://frontend
