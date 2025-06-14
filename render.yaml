@@ -1,20 +1,9 @@
 # Blueprint de Render para la aplicación PRzone
-# Versión final con dockerContext explícito y la sintaxis correcta para las URLs.
+# Versión final que usa un Private Service para el proxy Nginx.
 
 services:
-  # 1. Servicio del Proxy Inverso (Nginx)
-  - type: web
-    name: proxy
-    env: docker
-    repo: https://github.com/GuilleAlvareez/PRzone-Completo
-    dockerContext: ./nginx
-    dockerfilePath: ./nginx/Dockerfile
-    envVars:
-      - key: PORT
-        value: 80
-
-  # 2. Servicio del Backend (Node.js)
-  - type: web
+  # 1. Servicio del Backend (Node.js) - Ahora es un servicio privado
+  - type: pserv # pserv = Private Service
     name: backend
     env: docker
     repo: https://github.com/GuilleAlvareez/PRzone-Completo
@@ -24,9 +13,15 @@ services:
       - key: NODE_ENV
         value: production
       - key: BETTER_AUTH_URL
-        value: https://${proxy.RENDER_EXTERNAL_URL} # <-- FORMA CORRECTA
+        fromService:
+          type: web
+          name: proxy
+          property: url
       - key: CLIENT_URL
-        value: https://${proxy.RENDER_EXTERNAL_URL} # <-- FORMA CORRECTA
+        fromService:
+          type: web
+          name: proxy
+          property: url
       - key: DB_HOST
         value: "aws.connect.psdb.cloud"
       - key: DB_PORT
@@ -47,10 +42,30 @@ services:
       - key: DATABASE_URL
         sync: false
 
-  # 3. Servicio del Frontend (React servido por Nginx)
-  - type: web
+  # 2. Servicio del Frontend (React servido por Nginx) - También es un servicio privado
+  - type: pserv # pserv = Private Service
     name: frontend
     env: docker
     repo: https://github.com/GuilleAlvareez/PRzone-Completo
     dockerContext: ./frontend
     dockerfilePath: ./frontend/Dockerfile
+
+  # 3. Servicio del Proxy Inverso (Nginx) - ¡AHORA ES EL ÚNICO SERVICIO PÚBLICO!
+  - type: web # Este es el único 'web' service, el que se expone a internet.
+    name: proxy
+    env: nginx # Volvemos a usar el entorno optimizado de Nginx
+    repo: https://github.com/GuilleAlvareez/PRzone-Completo
+    # Usamos las reglas de reescritura nativas de Render, que son más sencillas
+    rules:
+      - type: rewrite
+        source: /api/(.*)
+        destination: /api/$1
+      - type: proxy
+        source: /api/(.*)
+        destination: http://backend:3000/$1
+      - type: rewrite
+        source: /(.*)
+        destination: /index.html
+      - type: proxy
+        source: /(.*)
+        destination: http://frontend
