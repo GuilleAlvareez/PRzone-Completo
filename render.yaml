@@ -1,5 +1,5 @@
 # Blueprint de Render para la aplicación PRzone
-# Este archivo define los servicios que componen la aplicación.
+# Versión final que usa un contenedor Docker personalizado para Nginx.
 
 services:
   # 1. Servicio del Backend (Node.js)
@@ -31,9 +31,7 @@ services:
         value: "przone"
       - key: model
         value: "mistralai/devstral-small:free"
-      # --- CLAVES SECRETAS ---
-      # Los valores para estas claves se configuran en el Dashboard de Render,
-      # NUNCA en este archivo.
+      # --- CLAVES SECRETAS (configurar en el Dashboard de Render) ---
       - key: BETTER_AUTH_SECRET
         sync: false
       - key: API_KEY
@@ -51,20 +49,16 @@ services:
     dockerfilePath: ./frontend/Dockerfile
 
   # 3. Servicio del Proxy Inverso (Nginx)
+  # Este es el ÚNICO servicio público.
   - type: web
     name: proxy
-    env: nginx
+    env: docker # <-- CAMBIO CLAVE: Usamos Docker en lugar de 'nginx'
     repo: https://github.com/GuilleAlvareez/PRzone-Completo
-    rules:
-      - type: rewrite
-        source: /api/(.*)
-        destination: /$1
-      - type: proxy
-        source: /api/(.*)
-        destination: http://backend:3000
-      - type: rewrite
-        source: /.*
-        destination: /index.html
-      - type: proxy
-        source: /*
-        destination: http://frontend
+    # No necesitamos un Dockerfile para Nginx, podemos usar la imagen oficial
+    # y montar nuestra configuración. Render lo maneja con estas propiedades:
+    dockerCommand: nginx -c /etc/nginx/nginx.conf -g 'daemon off;'
+    dockerContext: ./nginx # Le decimos dónde está el contexto (el archivo de config)
+    # Render necesita saber qué puerto exponer, aunque ya lo definimos en nginx.conf
+    envVars:
+      - key: PORT
+        value: 80
