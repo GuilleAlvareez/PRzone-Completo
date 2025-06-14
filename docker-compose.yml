@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # Servicio del Backend
+  backend:
+    build: 
+      context: ./backend  # 1. Especifica la carpeta raíz del build
+      dockerfile: Dockerfile 
+    container_name: przone-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+
+    # Si tu backend necesita conectarse a una base de datos que también está en Docker,
+    # necesitarás configurar una red. Por ahora, lo omitimos.
+
+  # Servicio del Frontend
+  frontend:
+    build: 
+      context: ./frontend  # 1. Especifica la carpeta raíz del build
+      dockerfile: Dockerfile
+    container_name: przone-frontend
+    restart: unless-stopped
+
+  # Servicio del Proxy Inverso
+  proxy:
+    image: nginx:alpine
+    container_name: przone-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80" # Mapea el puerto 80 de tu máquina al puerto 80 del contenedor
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf # Monta tu archivo de configuración
+    depends_on:
+      - frontend
+      - backend
